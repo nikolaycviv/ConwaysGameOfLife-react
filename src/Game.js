@@ -58,6 +58,14 @@ class Game extends Component {
     return neighbours
   }
 
+  getElementOffset() {
+    const rect = this.boardRef.getBoundingClientRect()
+    return {
+      x: (rect.left + window.pageXOffset) - document.documentElement.clientLeft,
+      y: (rect.top + window.pageYOffset) - document.documentElement.clientTop
+    }
+  }
+
   handleIntervalChange = (event) => {
     this.setState({ interval: event.target.value })
   }
@@ -77,6 +85,21 @@ class Game extends Component {
     this.setState({ cells: this.makeCells() })
   }
 
+  handleClick = (event) => {
+    const elementOffset = this.getElementOffset()
+    const offsetX = event.clientX - elementOffset.x
+    const offsetY = event.clientY - elementOffset.y
+
+    const x = Math.floor(offsetX / CELL_SIZE)
+    const y = Math.floor(offsetY / CELL_SIZE)
+
+    if (x >= 0 && x <= this.cols && y >= 0 && y <= this.rows) {
+      this.board[y][x] = !this.board[y][x]
+    }
+
+    this.setState({ cells: this.makeCells() })
+  }
+
   startGame = () => {
     this.setState({ isRunning: true })
     this.runGame()
@@ -84,12 +107,38 @@ class Game extends Component {
 
   stopGame = () => {
     this.setState({ isRunning: false })
+    if (this.timeoutHandler) {
+      window.clearTimeout(this.timeoutHandler)
+      this.timeoutHandler = null
+    }
   }
 
   runGame() {
     let newBoard = this.makeEmptyBoard()
+
+    for (let y = 0; y < this.rows; y++) {
+      for (let x = 0; x < this.cols; x++) {
+        let neighbours = this.calculateNeighbours(this.board, x, y)
+        if (this.board[y][x]) {
+          if (neighbours === 2 || neighbours === 3) {
+            newBoard[y][x] = true
+          } else {
+            newBoard[y][x] = false
+          }
+        } else {
+          if (!this.board[y][x] && neighbours === 3) {
+            newBoard[y][x] = true
+          }
+        }
+      }
+    }
+
     this.board = newBoard
     this.setState({ cells: this.makeCells() })
+
+    this.timeoutHandler = window.setTimeout(() => {
+      this.runGame()
+    }, this.state.interval)
   }
 
   render() {
@@ -98,15 +147,15 @@ class Game extends Component {
       <div>
         <div className="Board"
           style={{ width: WIDTH, height: HEIGHT, backgroundSize: `${CELL_SIZE}px ${CELL_SIZE}px` }}
+          onClick={this.handleClick}
+          ref={(n) => { this.boardRef = n }}
         >
-
           {cells.map(cell => (
             <Cells x={cell.x} y={cell.y} key={`${cell.x},${cell.y}`} />
           ))}
         </div>
 
         <div className="controls">
-          Update every <input value={interval} onChange={this.handleIntervalChange} /> msec
           Update every <input value={interval} onChange={this.handleIntervalChange} /> msec
           {isRunning ?
             <button className="button" onClick={this.stopGame}>Stop</button> :
