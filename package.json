@@ -1,5 +1,5 @@
 {
-  "name": "react-conwells-game-of-life",
+  "name": "react-conways-game-of-life",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
